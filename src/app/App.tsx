@@ -222,7 +222,7 @@ function Header({
     <header className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${scrolled ? "bg-white shadow-lg" : "bg-transparent"}`}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16 lg:h-20">
-          <a href="#" className="flex items-center gap-2.5 flex-shrink-0">
+          <a href="/#" className="flex items-center gap-2.5 flex-shrink-0">
             <div className={`w-9 h-9 rounded-xl flex items-center justify-center transition-colors ${scrolled ? "bg-[#0F3D66]" : "bg-white/20 backdrop-blur-sm"}`}>
               <Zap size={18} className="text-white" />
             </div>
@@ -439,6 +439,9 @@ function ServicesSection({ lang, site, dbServices }: { lang: Lang; site: SiteDat
               </div>
             );
           })}
+        </div>
+        <div className="mt-8 max-w-4xl mx-auto rounded-2xl border border-amber-200 bg-amber-50 px-5 py-4 text-center">
+          <p className="text-sm text-amber-800 leading-relaxed">{tx.services.customerSupply}</p>
         </div>
       </div>
     </section>
@@ -898,8 +901,8 @@ function FooterSection({
           <div>
             <h4 className="font-bold text-xs uppercase tracking-[0.15em] mb-5 text-white/45">{tx.footer.legal}</h4>
             <ul className="flex flex-col gap-2.5 mb-7">
-              <li><a href="#" className="text-white/65 hover:text-white text-sm transition-colors">{tx.footer.privacy}</a></li>
-              <li><a href="#" className="text-white/65 hover:text-white text-sm transition-colors">{tx.footer.terms}</a></li>
+              <li><span className="text-white/45 text-sm" aria-disabled="true">{tx.footer.privacy}</span></li>
+              <li><span className="text-white/45 text-sm" aria-disabled="true">{tx.footer.terms}</span></li>
             </ul>
             <h4 className="font-bold text-xs uppercase tracking-[0.15em] mb-3 text-white/45">Langue / Taal</h4>
             <div className="flex gap-2">

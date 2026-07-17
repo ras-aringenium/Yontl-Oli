@@ -20,7 +20,7 @@ INSERT INTO services (
     'Air-to-air heat pumps (air conditioning) and air-to-water heat pumps (domestic hot water & heating). Authorised distributor for Daikin, Samsung and Fujitsu.',
     'Wind',
     ARRAY['Daikin', 'Samsung', 'Fujitsu'],
-    FALSE, 1, TRUE
+    TRUE, 1, TRUE
   ),
   (
     'general-electricity',
@@ -32,7 +32,7 @@ INSERT INTO services (
     'Residential and professional electrical works: new installations, RGIE/AREI compliance, panel upgrades, wiring, troubleshooting and repairs.',
     'Zap',
     ARRAY[]::TEXT[],
-    FALSE, 2, TRUE
+    TRUE, 2, TRUE
   ),
   (
     'photovoltaic',
@@ -44,7 +44,7 @@ INSERT INTO services (
     'Solar panels with or without home batteries: new systems, extensions and upgrades of existing installations.',
     'Sun',
     ARRAY['Nphase', 'SMA', 'GoodWe', 'SolarEdge', 'Enphase', 'Huawei'],
-    FALSE, 3, TRUE
+    TRUE, 3, TRUE
   ),
   (
     'ev-charging',
@@ -56,7 +56,7 @@ INSERT INTO services (
     'Installation and commissioning of electric vehicle charging stations for residential and commercial use.',
     'Plug',
     ARRAY['Zaptec', 'Easee', 'Wallbox'],
-    FALSE, 4, TRUE
+    TRUE, 4, TRUE
   ),
   (
     'maintenance',
@@ -68,7 +68,7 @@ INSERT INTO services (
     'Preventive maintenance, diagnostics, troubleshooting and repairs for heat pumps, electrical systems, photovoltaic installations, batteries and EV charging stations.',
     'Wrench',
     ARRAY[]::TEXT[],
-    FALSE, 5, TRUE
+    TRUE, 5, TRUE
   )
 ON CONFLICT (slug) DO UPDATE SET
   title_fr                  = EXCLUDED.title_fr,

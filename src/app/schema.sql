@@ -31,6 +31,15 @@ CREATE TABLE IF NOT EXISTS business_settings (
   free_quote_text_nl  TEXT NOT NULL DEFAULT '',
   free_quote_text_en  TEXT NOT NULL DEFAULT '',
   hero_image_url      TEXT NOT NULL DEFAULT '',
+  social_facebook     TEXT,
+  social_instagram    TEXT,
+  social_twitter      TEXT,
+  social_linkedin     TEXT,
+  social_tiktok       TEXT,
+  social_youtube      TEXT,
+  google_business_url TEXT,
+  google_maps_url     TEXT,
+  google_review_url   TEXT,
   updated_at          TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
@@ -124,19 +133,40 @@ CREATE POLICY "public_read_reviews"       ON reviews           FOR SELECT TO ano
 CREATE POLICY "public_read_certifications" ON certifications   FOR SELECT TO anon USING (active = true);
 CREATE POLICY "public_read_brands"        ON brands            FOR SELECT TO anon USING (active = true);
 
--- Admin full access (authenticated)
-CREATE POLICY "admin_all_settings"        ON business_settings FOR ALL TO authenticated USING (true) WITH CHECK (true);
-CREATE POLICY "admin_all_services"        ON services          FOR ALL TO authenticated USING (true) WITH CHECK (true);
-CREATE POLICY "admin_all_gallery"         ON gallery_items     FOR ALL TO authenticated USING (true) WITH CHECK (true);
-CREATE POLICY "admin_all_reviews"         ON reviews           FOR ALL TO authenticated USING (true) WITH CHECK (true);
-CREATE POLICY "admin_all_certifications"  ON certifications    FOR ALL TO authenticated USING (true) WITH CHECK (true);
-CREATE POLICY "admin_all_brands"          ON brands            FOR ALL TO authenticated USING (true) WITH CHECK (true);
+-- Admin full access, restricted to the designated administrator account
+CREATE POLICY "admin_all_settings" ON business_settings FOR ALL TO authenticated
+  USING ((auth.jwt() ->> 'email') = 'lucianoncioiuoli@gmail.com')
+  WITH CHECK ((auth.jwt() ->> 'email') = 'lucianoncioiuoli@gmail.com');
+CREATE POLICY "admin_all_services" ON services FOR ALL TO authenticated
+  USING ((auth.jwt() ->> 'email') = 'lucianoncioiuoli@gmail.com')
+  WITH CHECK ((auth.jwt() ->> 'email') = 'lucianoncioiuoli@gmail.com');
+CREATE POLICY "admin_all_gallery" ON gallery_items FOR ALL TO authenticated
+  USING ((auth.jwt() ->> 'email') = 'lucianoncioiuoli@gmail.com')
+  WITH CHECK ((auth.jwt() ->> 'email') = 'lucianoncioiuoli@gmail.com');
+CREATE POLICY "admin_all_reviews" ON reviews FOR ALL TO authenticated
+  USING ((auth.jwt() ->> 'email') = 'lucianoncioiuoli@gmail.com')
+  WITH CHECK ((auth.jwt() ->> 'email') = 'lucianoncioiuoli@gmail.com');
+CREATE POLICY "admin_all_certifications" ON certifications FOR ALL TO authenticated
+  USING ((auth.jwt() ->> 'email') = 'lucianoncioiuoli@gmail.com')
+  WITH CHECK ((auth.jwt() ->> 'email') = 'lucianoncioiuoli@gmail.com');
+CREATE POLICY "admin_all_brands" ON brands FOR ALL TO authenticated
+  USING ((auth.jwt() ->> 'email') = 'lucianoncioiuoli@gmail.com')
+  WITH CHECK ((auth.jwt() ->> 'email') = 'lucianoncioiuoli@gmail.com');
 
 -- Storage RLS
-CREATE POLICY "public_view_images"  ON storage.objects FOR SELECT    TO anon          USING  (bucket_id IN ('hero','gallery','services','certifications','brands'));
-CREATE POLICY "admin_upload_images" ON storage.objects FOR INSERT    TO authenticated WITH CHECK (bucket_id IN ('hero','gallery','services','certifications','brands'));
-CREATE POLICY "admin_update_images" ON storage.objects FOR UPDATE    TO authenticated USING  (bucket_id IN ('hero','gallery','services','certifications','brands'));
-CREATE POLICY "admin_delete_images" ON storage.objects FOR DELETE    TO authenticated USING  (bucket_id IN ('hero','gallery','services','certifications','brands'));
+CREATE POLICY "public_view_images" ON storage.objects FOR SELECT TO anon
+  USING (bucket_id IN ('hero','gallery','services','certifications','brands'));
+CREATE POLICY "admin_upload_images" ON storage.objects FOR INSERT TO authenticated
+  WITH CHECK (bucket_id IN ('hero','gallery','services','certifications','brands')
+    AND (auth.jwt() ->> 'email') = 'lucianoncioiuoli@gmail.com');
+CREATE POLICY "admin_update_images" ON storage.objects FOR UPDATE TO authenticated
+  USING (bucket_id IN ('hero','gallery','services','certifications','brands')
+    AND (auth.jwt() ->> 'email') = 'lucianoncioiuoli@gmail.com')
+  WITH CHECK (bucket_id IN ('hero','gallery','services','certifications','brands')
+    AND (auth.jwt() ->> 'email') = 'lucianoncioiuoli@gmail.com');
+CREATE POLICY "admin_delete_images" ON storage.objects FOR DELETE TO authenticated
+  USING (bucket_id IN ('hero','gallery','services','certifications','brands')
+    AND (auth.jwt() ->> 'email') = 'lucianoncioiuoli@gmail.com');
 
 -- ─── SEED DATA ───────────────────────────────────────────────
 

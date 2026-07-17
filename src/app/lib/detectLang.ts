@@ -3,7 +3,7 @@ type Lang = "fr" | "nl" | "en";
 const SUPPORTED: Lang[] = ["fr", "nl", "en"];
 const STORAGE_KEY = "yontl_lang";
 
-// Belgian provinces → language mapping (ip-api returns English region names)
+// Belgian provinces → language mapping (ipapi.co returns region names)
 const FLANDERS = new Set([
   "Antwerp", "Antwerpen", "East Flanders", "Oost-Vlaanderen",
   "West Flanders", "West-Vlaanderen", "Flemish Brabant", "Vlaams-Brabant",
@@ -47,15 +47,14 @@ export function detectLangAsync(onDetected: (lang: Lang) => void): void {
 
   const browser = browserLang();
 
-  // ip-api.com: free, ~45 req/min, no API key, no GPS, HTTPS on paid tier only —
-  // we use the HTTP endpoint which is fine for a non-sensitive lookup.
-  fetch("http://ip-api.com/json/?fields=countryCode,regionName", {
+  // HTTPS IP lookup; no GPS permission and no blocking of page rendering.
+  fetch("https://ipapi.co/json/", {
     signal: AbortSignal.timeout(3500),
   })
     .then((r) => (r.ok ? r.json() : Promise.reject()))
-    .then((geo: { countryCode?: string; regionName?: string }) => {
-      const country = geo.countryCode ?? "";
-      const region = geo.regionName ?? "";
+    .then((geo: { country_code?: string; region?: string }) => {
+      const country = geo.country_code ?? "";
+      const region = geo.region ?? "";
       let detected: Lang;
       if (country === "BE") {
         if (FLANDERS.has(region)) {
