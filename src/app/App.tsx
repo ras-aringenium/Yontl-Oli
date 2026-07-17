@@ -13,6 +13,7 @@ import Seo from "./Seo";
 import { detectLangSync, detectLangAsync, saveManualLang } from "./lib/detectLang";
 
 const AdminApp = lazy(() => import("./admin/AdminApp"));
+const LegalPage = lazy(() => import("./LegalPage"));
 
 // ─── TYPES ────────────────────────────────────────────────────────────────────
 type Lang = "fr" | "nl" | "en";
@@ -71,7 +72,7 @@ const T = {
       send: "Envoyer ma demande", wa: "Écrire sur WhatsApp", selectSvc: "Sélectionnez un service…",
       thanks: "Merci ! Nous vous recontacterons très rapidement.",
     },
-    footer: { desc: "Votre spécialiste certifié en pompes à chaleur, électricité, photovoltaïque, bornes de recharge VE et maintenance en Belgique.", links: "Liens Rapides", legal: "Légal", privacy: "Politique de confidentialité", terms: "Conditions générales", rights: "Tous droits réservés." },
+    footer: { desc: "Votre spécialiste certifié en pompes à chaleur, électricité, photovoltaïque, bornes de recharge VE et maintenance en Belgique.", links: "Liens Rapides", legal: "Légal", legalNotice: "Mentions légales", privacy: "Politique de confidentialité", terms: "Conditions générales", rights: "Tous droits réservés." },
     mobileBar: { quote: "Devis gratuit", wa: "WhatsApp" },
   },
   nl: {
@@ -121,7 +122,7 @@ const T = {
       send: "Verstuur aanvraag", wa: "Schrijven op WhatsApp", selectSvc: "Selecteer een dienst…",
       thanks: "Bedankt! Wij nemen zo snel mogelijk contact op.",
     },
-    footer: { desc: "Uw gecertificeerde specialist voor warmtepompen, elektriciteit, fotovoltaïsche installaties, EV-laadstations en onderhoud in België.", links: "Snelle Links", legal: "Juridisch", privacy: "Privacybeleid", terms: "Algemene voorwaarden", rights: "Alle rechten voorbehouden." },
+    footer: { desc: "Uw gecertificeerde specialist voor warmtepompen, elektriciteit, fotovoltaïsche installaties, EV-laadstations en onderhoud in België.", links: "Snelle Links", legal: "Juridisch", legalNotice: "Juridische informatie", privacy: "Privacybeleid", terms: "Algemene voorwaarden", rights: "Alle rechten voorbehouden." },
     mobileBar: { quote: "Gratis offerte", wa: "WhatsApp" },
   },
   en: {
@@ -171,7 +172,7 @@ const T = {
       send: "Send request", wa: "Write on WhatsApp", selectSvc: "Select a service…",
       thanks: "Thank you! We will get back to you very soon.",
     },
-    footer: { desc: "Your certified specialist for heat pumps, electricity, photovoltaic installations, EV charging stations and maintenance in Belgium.", links: "Quick Links", legal: "Legal", privacy: "Privacy Policy", terms: "Terms & Conditions", rights: "All rights reserved." },
+    footer: { desc: "Your certified specialist for heat pumps, electricity, photovoltaic installations, EV charging stations and maintenance in Belgium.", links: "Quick Links", legal: "Legal", legalNotice: "Legal notice", privacy: "Privacy Policy", terms: "Terms & Conditions", rights: "All rights reserved." },
     mobileBar: { quote: "Free Quote", wa: "WhatsApp" },
   },
 } as const;
@@ -901,8 +902,9 @@ function FooterSection({
           <div>
             <h4 className="font-bold text-xs uppercase tracking-[0.15em] mb-5 text-white/45">{tx.footer.legal}</h4>
             <ul className="flex flex-col gap-2.5 mb-7">
-              <li><span className="text-white/45 text-sm" aria-disabled="true">{tx.footer.privacy}</span></li>
-              <li><span className="text-white/45 text-sm" aria-disabled="true">{tx.footer.terms}</span></li>
+              <li><a href="#/legal" className="text-white/65 hover:text-white text-sm transition-colors">{tx.footer.legalNotice}</a></li>
+              <li><a href="#/privacy" className="text-white/65 hover:text-white text-sm transition-colors">{tx.footer.privacy}</a></li>
+              <li><a href="#/terms" className="text-white/65 hover:text-white text-sm transition-colors">{tx.footer.terms}</a></li>
             </ul>
             <h4 className="font-bold text-xs uppercase tracking-[0.15em] mb-3 text-white/45">Langue / Taal</h4>
             <div className="flex gap-2">
@@ -1042,11 +1044,18 @@ export default function App() {
   }, []);
 
   const isAdmin = hash === "#/admin" || hash.startsWith("#/admin/");
+  const legalKind = hash === "#/legal"
+    ? "legal"
+    : hash === "#/privacy"
+      ? "privacy"
+      : hash === "#/terms"
+        ? "terms"
+        : null;
 
   return (
     <AppErrorBoundary>
       <Suspense fallback={<div className="min-h-screen flex items-center justify-center bg-gray-50 text-gray-400 text-sm">Chargement…</div>}>
-        {isAdmin ? <AdminApp /> : <WebsitePage />}
+        {isAdmin ? <AdminApp /> : legalKind ? <LegalPage kind={legalKind} /> : <WebsitePage />}
       </Suspense>
     </AppErrorBoundary>
   );
