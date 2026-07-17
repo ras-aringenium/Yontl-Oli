@@ -17,6 +17,18 @@ export interface ReviewItem {
   reply: string;
 }
 
+export interface SocialLinks {
+  facebook: string;
+  instagram: string;
+  twitter: string;
+  linkedin: string;
+  tiktok: string;
+  youtube: string;
+  googleBusiness: string;
+  googleMaps: string;
+  googleReview: string;
+}
+
 export interface SiteData {
   companyName: string;
   phone: string;
@@ -30,6 +42,7 @@ export interface SiteData {
   serviceImages: string[];
   galleryItems: GalleryItem[];
   reviews: ReviewItem[];
+  social: SocialLinks;
 }
 
 export const DEFAULT_DATA: SiteData = {
@@ -61,6 +74,7 @@ export const DEFAULT_DATA: SiteData = {
     { id: 7, cat: "ac", img: "https://images.unsplash.com/photo-1635604866833-70844856de75?w=700&h=700&fit=crop&fm=webp&auto=format", alt: "Réseau de climatisation professionnel Fujitsu multi-split" },
     { id: 8, cat: "electrical", img: "https://images.unsplash.com/photo-1521386455230-4ceaa25b72be?w=700&h=480&fit=crop&fm=webp&auto=format", alt: "Appareillage électrique moderne — installation conforme normes belges" },
   ],
+  social: { facebook: "", instagram: "", twitter: "", linkedin: "", tiktok: "", youtube: "", googleBusiness: "", googleMaps: "", googleReview: "" },
   reviews: [
     { name: "Sophie Lambrecht", initials: "SL", bg: "#0F3D66", rating: 5, date: "Nov 2024", text: "Excellent travail ! L'installation de la climatisation s'est faite rapidement et proprement. Très professionnel et ponctuel. Je recommande vivement.", reply: "Merci Sophie pour votre confiance ! Nous espérons vous satisfaire encore longtemps." },
     { name: "Marc Desmet", initials: "MD", bg: "#16A34A", rating: 5, date: "Oct 2024", text: "Devis reçu très rapidement, prix compétitif et travail irréprochable. Mon tableau électrique a été entièrement rénové en une seule journée.", reply: "Merci Marc ! Toujours un plaisir de travailler pour des clients aussi agréables." },

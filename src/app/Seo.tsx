@@ -169,18 +169,19 @@ function setMeta(name: string, content: string, attr: "name" | "property" = "nam
 }
 
 function setLink(rel: string, href: string, extras: Record<string, string> = {}) {
-  const selector = Object.entries(extras).reduce(
-    (acc, [k, v]) => `${acc}[${k}="${v}"]`,
-    `link[rel="${rel}"]`
-  );
+  const hrefSelector = `[href="${href}"]`;
+  const extrasSelector = Object.entries(extras)
+    .filter(([k]) => k !== "crossorigin")
+    .reduce((acc, [k, v]) => `${acc}[${k}="${v}"]`, "");
+  const selector = `link[rel="${rel}"]${extrasSelector}${hrefSelector}`;
   let el = document.querySelector(selector) as HTMLLinkElement | null;
   if (!el) {
     el = document.createElement("link");
     el.rel = rel;
+    el.href = href;
     Object.entries(extras).forEach(([k, v]) => el!.setAttribute(k, v));
     document.head.appendChild(el);
   }
-  el.href = href;
 }
 
 function setJsonLd(id: string, data: object) {
@@ -194,12 +195,16 @@ function setJsonLd(id: string, data: object) {
   script.textContent = JSON.stringify(data);
 }
 
-export default function Seo({ lang }: { lang: Lang }) {
+export default function Seo({ lang, heroImageUrl }: { lang: Lang; heroImageUrl?: string }) {
   useEffect(() => {
     const { title, description, keywords } = SEO_DATA[lang];
 
     document.title = title;
     document.documentElement.lang = lang === "nl" ? "nl-BE" : lang === "fr" ? "fr-BE" : "en";
+
+    // Preconnect for Google Fonts (reduces font render blocking)
+    setLink("preconnect", "https://fonts.googleapis.com", { crossorigin: "" });
+    setLink("preconnect", "https://fonts.gstatic.com", { crossorigin: "anonymous" });
 
     // Basic meta
     setMeta("description", description);
@@ -237,10 +242,15 @@ export default function Seo({ lang }: { lang: Lang }) {
     setLink("alternate", `${SITE_URL}?lang=en`, { hreflang: "en" });
     setLink("alternate", SITE_URL, { hreflang: "x-default" });
 
+    // Hero image preload (improves LCP)
+    if (heroImageUrl) {
+      setLink("preload", heroImageUrl, { as: "image" });
+    }
+
     // JSON-LD
     setJsonLd("sd-localbusiness", STRUCTURED_DATA);
     setJsonLd("sd-faq", buildFaqSchema(lang));
-  }, [lang]);
+  }, [lang, heroImageUrl]);
 
   return null;
 }

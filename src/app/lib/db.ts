@@ -18,6 +18,15 @@ export interface DbBusinessSettings {
   free_quote_text_nl: string;
   free_quote_text_en: string;
   hero_image_url: string;
+  social_facebook: string | null;
+  social_instagram: string | null;
+  social_twitter: string | null;
+  social_linkedin: string | null;
+  social_tiktok: string | null;
+  social_youtube: string | null;
+  google_business_url: string | null;
+  google_maps_url: string | null;
+  google_review_url: string | null;
   updated_at: string;
 }
 
@@ -32,6 +41,8 @@ export interface DbService {
   description_en: string;
   image_url: string;
   icon_name: string;
+  brands: string[] | null;
+  show_customer_supply_note: boolean | null;
   display_order: number;
   active: boolean;
   created_at: string;
@@ -146,6 +157,17 @@ export async function fetchSiteData(lang: Lang): Promise<Partial<SiteData & { su
       result.address = settings.address || undefined;
       result.hours = settings[`opening_hours_${lang}`] || settings.opening_hours_fr || undefined;
       if (settings.hero_image_url) result.heroImage = settings.hero_image_url;
+      result.social = {
+        facebook:       settings.social_facebook    ?? "",
+        instagram:      settings.social_instagram   ?? "",
+        twitter:        settings.social_twitter     ?? "",
+        linkedin:       settings.social_linkedin    ?? "",
+        tiktok:         settings.social_tiktok      ?? "",
+        youtube:        settings.social_youtube     ?? "",
+        googleBusiness: settings.google_business_url ?? "",
+        googleMaps:     settings.google_maps_url    ?? "",
+        googleReview:   settings.google_review_url  ?? "",
+      };
     }
 
     const services = (servicesRes.data ?? []) as DbService[];

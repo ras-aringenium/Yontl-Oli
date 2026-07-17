@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, createContext, useContext, Component 
 import type { ReactNode } from "react";
 import {
   LogOut, Settings, Wrench, Image, Star, Shield, Zap, ChevronDown, ChevronUp,
-  Plus, Trash2, Eye, EyeOff, GripVertical, Save, X, Check, Upload, Menu,
+  Plus, Trash2, Eye, EyeOff, GripVertical, Save, X, Check, Upload, Menu, Share2,
 } from "lucide-react";
 import { supabase } from "../../../utils/supabase/client";
 import {
@@ -196,7 +196,11 @@ function BusinessPanel() {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(true);
 
-  useEffect(() => { fetchBusinessSettings().then(setData); }, []);
+  useEffect(() => {
+    let cancelled = false;
+    fetchBusinessSettings().then((d) => { if (!cancelled) setData(d); });
+    return () => { cancelled = true; };
+  }, []);
 
   const save = async () => {
     if (!data) return;
@@ -277,16 +281,71 @@ function BusinessPanel() {
 }
 
 // ─── SERVICES ────────────────────────────────────────────────────────────────
+// ─── BRAND TAG EDITOR ────────────────────────────────────────────────────────
+function BrandTagEditor({ brands, onChange }: { brands: string[]; onChange: (b: string[]) => void }) {
+  const [input, setInput] = useState("");
+
+  const add = () => {
+    const v = input.trim();
+    if (!v || brands.includes(v)) return;
+    onChange([...brands, v]);
+    setInput("");
+  };
+
+  const remove = (brand: string) => onChange(brands.filter((b) => b !== brand));
+
+  return (
+    <div className="flex flex-col gap-2">
+      <div className="flex flex-wrap gap-1.5 min-h-[28px]">
+        {brands.map((brand) => (
+          <span key={brand} className="inline-flex items-center gap-1 px-2.5 py-0.5 bg-blue-50 text-blue-700 border border-blue-200 rounded-full text-xs font-semibold">
+            {brand}
+            <button type="button" onClick={() => remove(brand)} aria-label={`Retirer ${brand}`}
+              className="ml-0.5 hover:text-red-500 transition-colors">
+              <X size={10} />
+            </button>
+          </span>
+        ))}
+        {brands.length === 0 && <span className="text-xs text-gray-400 italic self-center">Aucune marque ajoutée</span>}
+      </div>
+      <div className="flex gap-2">
+        <input
+          className={inp + " flex-1"}
+          value={input}
+          placeholder="Ex: Daikin — appuyez sur Entrée pour ajouter"
+          onChange={(e) => setInput(e.target.value)}
+          onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); add(); } }}
+        />
+        <button type="button" onClick={add} className={`${btn} bg-gray-100 text-gray-600 hover:bg-gray-200 px-3`}>
+          <Plus size={14} />
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function ServicesPanel() {
   const [services, setServices] = useState<DbService[]>([]);
   const [editing, setEditing] = useState<string | null>(null);
   const [saving, setSaving] = useState<string | null>(null);
 
-  useEffect(() => { fetchAllServices().then(setServices); }, []);
+  useEffect(() => {
+    let cancelled = false;
+    fetchAllServices().then((d) => { if (!cancelled) setServices(d); });
+    return () => { cancelled = true; };
+  }, []);
 
   const save = async (svc: DbService) => {
     setSaving(svc.id);
-    await supabase.from("services").update({ ...svc, updated_at: new Date().toISOString() }).eq("id", svc.id);
+    await supabase.from("services").update({
+      title_fr: svc.title_fr, title_nl: svc.title_nl, title_en: svc.title_en,
+      description_fr: svc.description_fr, description_nl: svc.description_nl, description_en: svc.description_en,
+      image_url: svc.image_url, icon_name: svc.icon_name,
+      brands: svc.brands ?? [],
+      show_customer_supply_note: svc.show_customer_supply_note ?? false,
+      display_order: svc.display_order, active: svc.active,
+      updated_at: new Date().toISOString(),
+    }).eq("id", svc.id);
     setSaving(null);
   };
 
@@ -299,14 +358,20 @@ function ServicesPanel() {
       <h2 className="text-lg font-bold text-gray-800">Services</h2>
       {services.map((svc) => {
         const open = editing === svc.id;
+        const brandCount = (svc.brands ?? []).length;
         return (
           <Card key={svc.id}>
             <div className="flex items-center justify-between gap-3 cursor-pointer" onClick={() => setEditing(open ? null : svc.id)}>
               <div className="flex items-center gap-3 min-w-0">
-                <img src={svc.image_url} alt="" className="w-12 h-12 object-cover rounded-lg bg-gray-100 flex-shrink-0" />
+                {svc.image_url
+                  ? <img src={svc.image_url} alt="" className="w-12 h-12 object-cover rounded-lg bg-gray-100 flex-shrink-0" />
+                  : <div className="w-12 h-12 rounded-lg bg-gray-100 flex-shrink-0" />}
                 <div className="min-w-0">
                   <p className="font-semibold text-gray-800 text-sm truncate">{svc.title_fr}</p>
-                  <p className="text-gray-400 text-xs">Ordre: {svc.display_order} · {svc.active ? "Actif" : "Masqué"}</p>
+                  <p className="text-gray-400 text-xs">
+                    Ordre: {svc.display_order} · {svc.active ? "Actif" : "Masqué"}
+                    {brandCount > 0 && ` · ${brandCount} marque${brandCount > 1 ? "s" : ""}`}
+                  </p>
                 </div>
               </div>
               <div className="flex items-center gap-2 flex-shrink-0">
@@ -338,6 +403,24 @@ function ServicesPanel() {
                     </Field>
                   ))}
                 </div>
+                <Field label="Marques" hint="Appuyez sur Entrée ou + pour ajouter. Cliquez × pour retirer.">
+                  <BrandTagEditor
+                    brands={svc.brands ?? []}
+                    onChange={(brands) => update(svc.id, { brands })}
+                  />
+                </Field>
+                <Field label="Message équipement client">
+                  <div className="flex items-start gap-3 py-1">
+                    <Toggle
+                      checked={svc.show_customer_supply_note ?? false}
+                      label={svc.show_customer_supply_note ? "Affiché" : "Masqué"}
+                      onChange={(v) => update(svc.id, { show_customer_supply_note: v })}
+                    />
+                    <p className="text-xs text-gray-500 leading-relaxed mt-0.5">
+                      Affiche la note sur l'installation d'équipement fourni par le client sur cette fiche service.
+                    </p>
+                  </div>
+                </Field>
                 <Field label="Image">
                   <ImgUpload bucket="services" currentUrl={svc.image_url}
                     onUpload={(url) => update(svc.id, { image_url: url })} />
@@ -369,7 +452,12 @@ function GalleryPanel() {
     fetchAllGallery().then((d) => setItems(d as GalleryRow[]));
     fetchAllServices().then(setServices);
   };
-  useEffect(load, []);
+  useEffect(() => {
+    let cancelled = false;
+    fetchAllGallery().then((d) => { if (!cancelled) setItems(d as GalleryRow[]); });
+    fetchAllServices().then((d) => { if (!cancelled) setServices(d); });
+    return () => { cancelled = true; };
+  }, []);
 
   const addItem = async () => {
     if (!newItem.image_url) return;
@@ -565,7 +653,12 @@ function ReviewsPanel() {
     fetchAllReviews().then((d) => setReviews(d as ReviewRow[]));
     fetchAllServices().then(setServices);
   };
-  useEffect(load, []);
+  useEffect(() => {
+    let cancelled = false;
+    fetchAllReviews().then((d) => { if (!cancelled) setReviews(d as ReviewRow[]); });
+    fetchAllServices().then((d) => { if (!cancelled) setServices(d); });
+    return () => { cancelled = true; };
+  }, []);
 
   const addReview = async () => {
     if (!newReview.customer_name) return;
@@ -658,8 +751,12 @@ function CertificationsPanel() {
   const [newCert, setNewCert] = useState({ name: "", logo_url: "", description_fr: "", description_nl: "", description_en: "", display_order: 0 });
   const [editId, setEditId] = useState<string | null>(null);
 
-  const load = () => fetchAllCertifications().then(setCerts);
-  useEffect(load, []);
+  const load = () => { fetchAllCertifications().then(setCerts); };
+  useEffect(() => {
+    let cancelled = false;
+    fetchAllCertifications().then((d) => { if (!cancelled) setCerts(d); });
+    return () => { cancelled = true; };
+  }, []);
 
   const add = async () => {
     if (!newCert.name) return;
@@ -779,8 +876,12 @@ function BrandsPanel() {
   const [newBrand, setNewBrand] = useState({ name: "", logo_url: "", display_order: 0 });
   const [editId, setEditId] = useState<string | null>(null);
 
-  const load = () => fetchAllBrands().then(setBrands);
-  useEffect(load, []);
+  const load = () => { fetchAllBrands().then(setBrands); };
+  useEffect(() => {
+    let cancelled = false;
+    fetchAllBrands().then((d) => { if (!cancelled) setBrands(d); });
+    return () => { cancelled = true; };
+  }, []);
 
   const add = async () => {
     if (!newBrand.name) return;
@@ -876,8 +977,179 @@ function BrandsPanel() {
   );
 }
 
+// ─── SOCIAL MEDIA ─────────────────────────────────────────────────────────────
+type SocialKey =
+  | "social_facebook" | "social_instagram" | "social_twitter"
+  | "social_linkedin" | "social_tiktok"    | "social_youtube"
+  | "google_business_url" | "google_maps_url" | "google_review_url";
+
+const SOCIAL_PLATFORMS: { key: SocialKey; label: string; placeholder: string; color: string; group: "social" | "google" }[] = [
+  { key: "social_facebook",    label: "Facebook",                placeholder: "https://facebook.com/votrepage",           color: "#1877F2", group: "social" },
+  { key: "social_instagram",   label: "Instagram",               placeholder: "https://instagram.com/votrecompte",        color: "#E1306C", group: "social" },
+  { key: "social_twitter",     label: "X / Twitter",             placeholder: "https://x.com/votrecompte",               color: "#000000", group: "social" },
+  { key: "social_linkedin",    label: "LinkedIn",                placeholder: "https://linkedin.com/company/…",          color: "#0A66C2", group: "social" },
+  { key: "social_tiktok",      label: "TikTok",                  placeholder: "https://tiktok.com/@votrecompte",         color: "#010101", group: "social" },
+  { key: "social_youtube",     label: "YouTube",                 placeholder: "https://youtube.com/@votrecompte",        color: "#FF0000", group: "social" },
+  { key: "google_business_url", label: "Google Business Profile", placeholder: "https://g.page/votrepage",               color: "#4285F4", group: "google" },
+  { key: "google_maps_url",    label: "Google Maps (localisation)", placeholder: "https://maps.google.com/?q=…",         color: "#34A853", group: "google" },
+  { key: "google_review_url",  label: "Laisser un avis Google",  placeholder: "https://g.page/r/…/review",              color: "#FBBC05", group: "google" },
+];
+
+// Simple SVG icons for platforms not in lucide-react
+function SocialIcon({ platform, size = 16 }: { platform: string; size?: number }) {
+  if (platform === "social_facebook") return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
+  );
+  if (platform === "social_instagram") return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z"/></svg>
+  );
+  if (platform === "social_twitter") return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+  );
+  if (platform === "social_linkedin") return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>
+  );
+  if (platform === "social_tiktok") return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor"><path d="M12.525.02c1.31-.02 2.61-.01 3.91-.02.08 1.53.63 3.09 1.75 4.17 1.12 1.11 2.7 1.62 4.24 1.79v4.03c-1.44-.05-2.89-.35-4.2-.97-.57-.26-1.1-.59-1.62-.93-.01 2.92.01 5.84-.02 8.75-.08 1.4-.54 2.79-1.35 3.94-1.31 1.92-3.58 3.17-5.91 3.21-1.43.08-2.86-.31-4.08-1.03-2.02-1.19-3.44-3.37-3.65-5.71-.02-.5-.03-1-.01-1.49.18-1.9 1.12-3.72 2.58-4.96 1.66-1.44 3.98-2.13 6.15-1.72.02 1.48-.04 2.96-.04 4.44-.99-.32-2.15-.23-3.02.37-.63.41-1.11 1.04-1.36 1.75-.21.51-.15 1.07-.14 1.61.24 1.64 1.82 3.02 3.5 2.87 1.12-.01 2.19-.66 2.77-1.61.19-.33.4-.67.41-1.06.1-1.79.06-3.57.07-5.36.01-4.03-.01-8.05.02-12.07z"/></svg>
+  );
+  if (platform === "social_youtube") return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor"><path d="M23.498 6.186a3.016 3.016 0 00-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 00.502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 002.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 002.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>
+  );
+  // Google icon (multicolor G) — used for all three google_* keys
+  if (platform === "google_business_url" || platform === "google_maps_url" || platform === "google_review_url") return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+      <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+      <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05"/>
+      <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+    </svg>
+  );
+  return null;
+}
+
+function normalizeUrl(raw: string): string {
+  const trimmed = raw.trim();
+  if (!trimmed) return "";
+  if (/^https?:\/\//i.test(trimmed)) return trimmed;
+  return `https://${trimmed}`;
+}
+
+function isValidUrl(url: string): boolean {
+  if (!url) return true; // empty is allowed
+  try { new URL(url); return true; } catch { return false; }
+}
+
+function SocialPanel() {
+  const [data, setData] = useState<DbBusinessSettings | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(true);
+  const [errors, setErrors] = useState<Partial<Record<SocialKey, string>>>({});
+
+  useEffect(() => {
+    let cancelled = false;
+    fetchBusinessSettings().then((d) => { if (!cancelled) setData(d); });
+    return () => { cancelled = true; };
+  }, []);
+
+  const update = (key: SocialKey, raw: string) => {
+    const normalized = raw ? normalizeUrl(raw) : "";
+    setData((d) => d ? { ...d, [key]: normalized || null } : d);
+    setErrors((e) => {
+      const next = { ...e };
+      if (isValidUrl(normalized)) delete next[key]; else next[key] = "URL invalide";
+      return next;
+    });
+    setSaved(false);
+  };
+
+  const save = async () => {
+    if (!data) return;
+    const newErrors: Partial<Record<SocialKey, string>> = {};
+    for (const { key } of SOCIAL_PLATFORMS) {
+      const val = (data[key] as string | null) ?? "";
+      if (val && !isValidUrl(val)) newErrors[key] = "URL invalide";
+    }
+    setErrors(newErrors);
+    if (Object.keys(newErrors).length > 0) return;
+    setSaving(true);
+    await supabase.from("business_settings").update({
+      social_facebook:     data.social_facebook     ?? null,
+      social_instagram:    data.social_instagram    ?? null,
+      social_twitter:      data.social_twitter      ?? null,
+      social_linkedin:     data.social_linkedin     ?? null,
+      social_tiktok:       data.social_tiktok       ?? null,
+      social_youtube:      data.social_youtube      ?? null,
+      google_business_url: data.google_business_url ?? null,
+      google_maps_url:     data.google_maps_url     ?? null,
+      google_review_url:   data.google_review_url   ?? null,
+      updated_at: new Date().toISOString(),
+    }).eq("id", data.id);
+    setSaving(false);
+    setSaved(true);
+  };
+
+  if (!data) return <p className="text-sm text-gray-400 p-4">Loading…</p>;
+
+  return (
+    <div className="flex flex-col gap-5">
+      <div className="flex items-center justify-between">
+        <h2 className="text-lg font-bold text-gray-800">Réseaux sociaux & Profils Google</h2>
+        <div className="flex items-center gap-3">
+          <SaveBadge saving={saving} />
+          <button onClick={save} disabled={saved} className={primaryBtn}>
+            <Save size={14} className="inline mr-1.5" />Sauvegarder
+          </button>
+        </div>
+      </div>
+      {(["social", "google"] as const).map((group) => (
+        <Card
+          key={group}
+          title={group === "social" ? "Réseaux sociaux" : "Google Business & Avis"}
+          action={<p className="text-xs text-gray-400">Laissez vide pour masquer</p>}
+        >
+          <div className="flex flex-col gap-5">
+            {SOCIAL_PLATFORMS.filter((p) => p.group === group).map(({ key, label, placeholder, color }) => {
+              const val = (data[key] as string | null) ?? "";
+              const err = errors[key];
+              return (
+                <div key={key} className="flex flex-col gap-1.5">
+                  <label className="flex items-center gap-2 text-xs font-semibold text-gray-600 uppercase tracking-wide">
+                    <span style={{ color }}><SocialIcon platform={key} size={14} /></span>
+                    {label}
+                  </label>
+                  <div className="flex gap-2">
+                    <input
+                      className={`${inp} flex-1 ${err ? "border-red-400 focus:border-red-400 focus:ring-red-100" : ""}`}
+                      value={val}
+                      onChange={(e) => update(key, e.target.value)}
+                      onBlur={(e) => { if (e.target.value && !e.target.value.startsWith("http")) update(key, e.target.value); }}
+                      placeholder={placeholder}
+                      type="url"
+                    />
+                    {val && (
+                      <button onClick={() => update(key, "")}
+                        className="px-2.5 rounded-lg border border-gray-200 text-gray-400 hover:text-red-500 hover:border-red-200 transition-colors"
+                        title="Supprimer">
+                        <X size={14} />
+                      </button>
+                    )}
+                  </div>
+                  {err && <p className="text-xs text-red-500">{err}</p>}
+                  {val && isValidUrl(val) && (
+                    <a href={val} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-500 hover:underline truncate">{val}</a>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </Card>
+      ))}
+    </div>
+  );
+}
+
 // ─── ADMIN SHELL ──────────────────────────────────────────────────────────────
-type Section = "settings" | "services" | "gallery" | "reviews" | "certifications" | "brands";
+type Section = "settings" | "services" | "gallery" | "reviews" | "certifications" | "brands" | "social";
 
 const NAV: { key: Section; label: string; icon: React.ElementType }[] = [
   { key: "settings", label: "Paramètres", icon: Settings },
@@ -886,6 +1158,7 @@ const NAV: { key: Section; label: string; icon: React.ElementType }[] = [
   { key: "reviews", label: "Avis", icon: Star },
   { key: "certifications", label: "Certifications", icon: Shield },
   { key: "brands", label: "Marques", icon: Zap },
+  { key: "social", label: "Réseaux & Google", icon: Share2 },
 ];
 
 export default function AdminApp() {
@@ -967,6 +1240,7 @@ export default function AdminApp() {
             {section === "reviews" && <ReviewsPanel />}
             {section === "certifications" && <CertificationsPanel />}
             {section === "brands" && <BrandsPanel />}
+            {section === "social" && <SocialPanel />}
           </PanelErrorBoundary>
         </div>
       </main>
