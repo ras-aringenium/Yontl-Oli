@@ -1,4 +1,5 @@
-import { useState, useEffect, useCallback, createContext, useContext } from "react";
+import { useState, useEffect, useCallback, createContext, useContext, Component } from "react";
+import type { ReactNode } from "react";
 import {
   LogOut, Settings, Wrench, Image, Star, Shield, Zap, ChevronDown, ChevronUp,
   Plus, Trash2, Eye, EyeOff, GripVertical, Save, X, Check, Upload, Menu,
@@ -9,6 +10,25 @@ import {
   fetchAllCertifications, fetchAllBrands, uploadImage, deleteImage,
   DbBusinessSettings, DbService, DbGalleryItem, DbReview, DbCertification, DbBrand,
 } from "../lib/db";
+
+// ─── ERROR BOUNDARY ───────────────────────────────────────────────────────────
+class PanelErrorBoundary extends Component<{ children: ReactNode }, { error: string | null }> {
+  state = { error: null };
+  static getDerivedStateFromError(e: Error) { return { error: e.message ?? String(e) }; }
+  render() {
+    if (this.state.error) return (
+      <div className="p-8 bg-red-50 border border-red-200 rounded-xl">
+        <p className="font-bold text-red-700 mb-2">Erreur de rendu</p>
+        <p className="text-sm text-red-600 font-mono break-all">{this.state.error}</p>
+        <button onClick={() => this.setState({ error: null })}
+          className="mt-4 px-4 py-2 bg-red-100 hover:bg-red-200 text-red-700 rounded-lg text-sm font-semibold">
+          Réessayer
+        </button>
+      </div>
+    );
+    return this.props.children;
+  }
+}
 
 // ─── AUTH CONTEXT ─────────────────────────────────────────────────────────────
 const AuthCtx = createContext<{ token: string | null; refreshToken: string | null }>({ token: null, refreshToken: null });
@@ -57,14 +77,15 @@ function ImgUpload({ bucket, currentUrl, onUpload, aspect = "video" }: { bucket:
     setUploadError(null);
     try {
       if (!token || !refreshToken) throw new Error("Session expirée — veuillez vous reconnecter.");
-      // Force the session onto the singleton so storage picks it up
       await supabase.auth.setSession({ access_token: token, refresh_token: refreshToken });
+
       const ext = file.name.split(".").pop() ?? "jpg";
       const path = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
       const { data, error } = await supabase.storage.from(bucket).upload(path, file, {
         upsert: true,
         contentType: file.type || "image/jpeg",
       });
+
       if (error) throw new Error(error.message);
       const { data: urlData } = supabase.storage.from(bucket).getPublicUrl(data.path);
       onUpload(urlData.publicUrl);
@@ -939,12 +960,14 @@ export default function AdminApp() {
           <h1 className="font-bold text-gray-800">{NAV.find((n) => n.key === section)?.label}</h1>
         </header>
         <div className="p-5 lg:p-8 max-w-5xl mx-auto">
-          {section === "settings" && <BusinessPanel />}
-          {section === "services" && <ServicesPanel />}
-          {section === "gallery" && <GalleryPanel />}
-          {section === "reviews" && <ReviewsPanel />}
-          {section === "certifications" && <CertificationsPanel />}
-          {section === "brands" && <BrandsPanel />}
+          <PanelErrorBoundary>
+            {section === "settings" && <BusinessPanel />}
+            {section === "services" && <ServicesPanel />}
+            {section === "gallery" && <GalleryPanel />}
+            {section === "reviews" && <ReviewsPanel />}
+            {section === "certifications" && <CertificationsPanel />}
+            {section === "brands" && <BrandsPanel />}
+          </PanelErrorBoundary>
         </div>
       </main>
     </div>
