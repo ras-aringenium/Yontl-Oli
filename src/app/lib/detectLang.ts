@@ -32,6 +32,10 @@ export function getSavedLang(): Lang | null {
 
 export function saveManualLang(lang: Lang): void {
   try { localStorage.setItem(STORAGE_KEY, lang); } catch {}
+  const parts = window.location.pathname.split("/").filter(Boolean);
+  if (parts.length === 0 || (parts.length === 1 && SUPPORTED.includes(parts[0] as Lang))) {
+    window.history.replaceState({}, "", `/${lang}/${window.location.hash || ""}`);
+  }
 }
 
 export function detectLangSync(): Lang {
