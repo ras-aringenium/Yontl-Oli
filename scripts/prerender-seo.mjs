@@ -6,9 +6,9 @@ const template = fs.readFileSync(path.join(dist, "index.html"), "utf8");
 const site = "https://oli-nrg.be";
 
 const homes = {
-  fr: { title: "Installateur Climatisation & Pompe à Chaleur Belgique | Oli-NRG", desc: "Oli-NRG installe pompes à chaleur, climatisation, électricité, photovoltaïque, batteries et bornes de recharge en Belgique. Devis gratuit.", h1: "Votre spécialiste certifié en Pompes à Chaleur, Électricité, Photovoltaïque, Bornes VE & Maintenance", services: ["Pompes à chaleur", "Électricité générale", "Installations photovoltaïques", "Bornes de recharge VE", "Entretien, maintenance & dépannage"] },
-  nl: { title: "Airco & Warmtepomp Installateur België | Oli-NRG", desc: "Oli-NRG installeert warmtepompen, airco, elektriciteit, zonnepanelen, thuisbatterijen en EV-laadpalen in België. Gratis offerte.", h1: "Uw gecertificeerde specialist voor Warmtepompen, Elektriciteit, Fotovoltaïsch, EV-Laadpalen & Onderhoud", services: ["Warmtepompen", "Algemene elektriciteit", "Fotovoltaïsche installaties", "EV-laadstations", "Onderhoud & herstellingen"] },
-  en: { title: "Air Conditioning & Heat Pump Installer Belgium | Oli-NRG", desc: "Oli-NRG installs heat pumps, air conditioning, electrical systems, solar panels, home batteries and EV chargers across Belgium. Free quote.", h1: "Your certified specialist for Heat Pumps, Electricity, Photovoltaic, EV Charging & Maintenance", services: ["Heat pumps", "General electricity", "Photovoltaic installations", "EV charging stations", "Maintenance & repairs"] },
+  fr: { title: "Installateur Climatisation & Pompe à Chaleur Belgique | Oli-NRG", desc: "Oli-NRG installe pompes à chaleur, climatisation, électricité, photovoltaïque, batteries et bornes de recharge en Belgique. Devis gratuit.", h1: "Votre spécialiste certifié en Pompes à Chaleur, Électricité, Photovoltaïque, Bornes VE & Maintenance", services: [["pompes-a-chaleur", "Pompes à chaleur"], ["electricite", "Électricité générale"], ["photovoltaique", "Installations photovoltaïques"], ["bornes-recharge", "Bornes de recharge VE"], ["entretien-maintenance", "Entretien, maintenance & dépannage"]] },
+  nl: { title: "Airco & Warmtepomp Installateur België | Oli-NRG", desc: "Oli-NRG installeert warmtepompen, airco, elektriciteit, zonnepanelen, thuisbatterijen en EV-laadpalen in België. Gratis offerte.", h1: "Uw gecertificeerde specialist voor Warmtepompen, Elektriciteit, Fotovoltaïsch, EV-Laadpalen & Onderhoud", services: [["warmtepompen", "Warmtepompen"], ["elektriciteit", "Algemene elektriciteit"], ["zonnepanelen", "Fotovoltaïsche installaties"], ["laadpalen", "EV-laadstations"], ["onderhoud", "Onderhoud & herstellingen"]] },
+  en: { title: "Air Conditioning & Heat Pump Installer Belgium | Oli-NRG", desc: "Oli-NRG installs heat pumps, air conditioning, electrical systems, solar panels, home batteries and EV chargers across Belgium. Free quote.", h1: "Your certified specialist for Heat Pumps, Electricity, Photovoltaic, EV Charging & Maintenance", services: [["heat-pumps", "Heat pumps"], ["electricity", "General electricity"], ["solar-panels", "Photovoltaic installations"], ["ev-charging", "EV charging stations"], ["maintenance", "Maintenance & repairs"]] },
 };
 
 const services = {
@@ -35,13 +35,29 @@ const services = {
   ],
 };
 
+const staticCopy = {
+  fr: "Belgique · Devis gratuit · Installation professionnelle",
+  nl: "België · Gratis offerte · Professionele installatie",
+  en: "Belgium · Free quote · Professional installation",
+};
+
 function escapeHtml(s) { return s.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;"); }
-function head(html, lang, title, desc, canonical) {
+function cleanSeoHead(html) {
   return html
+    .replace(/\s*<link[^>]+rel="canonical"[^>]*>/gi, "")
+    .replace(/\s*<link[^>]+rel="alternate"[^>]*>/gi, "")
+    .replace(/\s*<meta[^>]+name="robots"[^>]*>/gi, "")
+    .replace(/\s*<meta[^>]+property="og:(?:title|description|url)"[^>]*>/gi, "");
+}
+function head(html, lang, title, desc, canonical) {
+  return cleanSeoHead(html)
     .replace(/<html lang="[^"]*">/, `<html lang="${lang === "fr" ? "fr-BE" : lang === "nl" ? "nl-BE" : "en"}">`)
     .replace(/<title>.*?<\/title>/s, `<title>${escapeHtml(title)}</title>`)
     .replace(/<meta name="description" content="[^"]*"\s*\/>/, `<meta name="description" content="${escapeHtml(desc)}" />`)
     .replace("</head>", `<link rel="canonical" href="${canonical}" /><meta name="robots" content="index, follow, max-image-preview:large" /><meta property="og:title" content="${escapeHtml(title)}" /><meta property="og:description" content="${escapeHtml(desc)}" /><meta property="og:url" content="${canonical}" /></head>`);
+}
+function replaceStaticRoot(html, body) {
+  return html.replace(/<!-- SEO_STATIC_START -->[\s\S]*?<!-- SEO_STATIC_END -->/, `<!-- SEO_STATIC_START -->${body}<!-- SEO_STATIC_END -->`);
 }
 function writeRoute(route, html) {
   const dir = path.join(dist, route);
@@ -51,8 +67,9 @@ function writeRoute(route, html) {
 
 for (const [lang, data] of Object.entries(homes)) {
   const canonical = `${site}/${lang}/`;
-  const staticBody = `<div id="root"><main style="font-family:Arial,sans-serif;padding:48px;max-width:1000px;margin:auto"><h1>${escapeHtml(data.h1)}</h1><p>${escapeHtml(data.desc)}</p><h2>Services</h2><ul>${data.services.map(s => `<li>${escapeHtml(s)}</li>`).join("")}</ul><p><a href="/${lang}/#contact">Contact · Oli-NRG</a></p></main></div>`;
-  let html = head(template, lang, data.title, data.desc, canonical).replace('<div id="root"></div>', staticBody);
+  const list = data.services.map(([slug, label]) => `<li><a href="/${lang}/${slug}/">${escapeHtml(label)}</a></li>`).join("");
+  const staticBody = `<div id="root"><main style="font-family:Arial,sans-serif;padding:48px;max-width:1000px;margin:auto"><h1>${escapeHtml(data.h1)}</h1><p>${escapeHtml(data.desc)}</p><h2>Services</h2><ul>${list}</ul><p><a href="/${lang}/#contact">Contact · Oli-NRG</a></p></main></div>`;
+  let html = replaceStaticRoot(head(template, lang, data.title, data.desc, canonical), staticBody);
   html = html.replace("</head>", `<link rel="alternate" hreflang="fr-BE" href="${site}/fr/"/><link rel="alternate" hreflang="nl-BE" href="${site}/nl/"/><link rel="alternate" hreflang="en" href="${site}/en/"/><link rel="alternate" hreflang="x-default" href="${site}/"/></head>`);
   writeRoute(lang, html);
 }
@@ -60,8 +77,8 @@ for (const [lang, data] of Object.entries(homes)) {
 for (const [lang, rows] of Object.entries(services)) {
   rows.forEach(([slug, title, desc], index) => {
     const canonical = `${site}/${lang}/${slug}/`;
-    const staticBody = `<div id="root"><main style="font-family:Arial,sans-serif;padding:48px;max-width:1000px;margin:auto"><p><a href="/${lang}/">Oli-NRG</a></p><h1>${escapeHtml(title)}</h1><p>${escapeHtml(desc)}</p><p>Belgium · Free quotation · Professional installation</p><p><a href="/${lang}/#contact">Contact Oli-NRG</a></p></main></div>`;
-    let html = head(template, lang, `${title} | Oli-NRG`, desc, canonical).replace('<div id="root"></div>', staticBody);
+    const staticBody = `<div id="root"><main style="font-family:Arial,sans-serif;padding:48px;max-width:1000px;margin:auto"><p><a href="/${lang}/">Oli-NRG</a></p><h1>${escapeHtml(title)}</h1><p>${escapeHtml(desc)}</p><p>${escapeHtml(staticCopy[lang])}</p><p><a href="/${lang}/#contact">Contact Oli-NRG</a></p></main></div>`;
+    let html = replaceStaticRoot(head(template, lang, `${title} | Oli-NRG`, desc, canonical), staticBody);
     const keys = ["fr", "nl", "en"];
     const alternates = keys.map(l => `<link rel="alternate" hreflang="${l === "fr" ? "fr-BE" : l === "nl" ? "nl-BE" : "en"}" href="${site}/${l}/${services[l][index][0]}/"/>`).join("");
     html = html.replace("</head>", `${alternates}</head>`);
