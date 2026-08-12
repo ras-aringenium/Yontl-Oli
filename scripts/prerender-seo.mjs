@@ -57,7 +57,7 @@ function head(html, lang, title, desc, canonical) {
     .replace("</head>", `<link rel="canonical" href="${canonical}" /><meta name="robots" content="index, follow, max-image-preview:large" /><meta property="og:title" content="${escapeHtml(title)}" /><meta property="og:description" content="${escapeHtml(desc)}" /><meta property="og:url" content="${canonical}" /></head>`);
 }
 function replaceStaticRoot(html, body) {
-  return html.replace(/<!-- SEO_STATIC_START -->[\s\S]*?<!-- SEO_STATIC_END -->/, `<!-- SEO_STATIC_START -->${body}<!-- SEO_STATIC_END -->`);
+  return html.replace(/<div id="root">[\s\S]*?<\/div>/, body);
 }
 function writeRoute(route, html) {
   const dir = path.join(dist, route);
